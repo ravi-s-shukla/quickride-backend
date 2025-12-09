@@ -1,0 +1,129 @@
+version: '3.9'
+
+services:
+  # =============== MESSAGE BROKER ===============
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # message broker port
+      - "15672:15672"   # management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  # =============== DATABASES ===============
+  rider-db:
+    image: mongo:6
+    container_name: rider-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - rider-data:/data/db
+
+  captain-db:
+    image: mongo:6
+    container_name: captain-db
+    ports:
+      - "27018:27017" # Expose on different host port to avoid conflict and right hand side is same because each container uses default port
+    volumes:
+      - captain-data:/data/db
+
+  ride-db:
+    image: mongo:6
+    container_name: ride-db
+    ports:
+      - "27019:27017"
+    volumes:
+      - ride-data:/data/db
+
+  # =============== SERVICES ===============
+  rider-service:
+    build: ./rider-service
+    container_name: rider-service
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./rider-service:/app
+      - ./common:/app/common   # <-- Required
+      - /app/node_modules
+    environment:
+      PORT: 3001
+      MONGO_URL: mongodb://rider-db:27017/riderdb
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      SOCKET_URL: http://socket-gateway:4000
+    depends_on:
+      - rabbitmq
+      - rider-db
+      - socket-gateway
+
+  captain-service:
+    build: ./captain-service
+    container_name: captain-service
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./captain-service:/app
+      - ./common:/app/common   # <-- Required
+      - /app/node_modules
+    environment:
+      PORT: 3002
+      MONGO_URL: mongodb://captain-db:27017/captaindb
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      SOCKET_URL: http://socket-gateway:4000
+    depends_on:
+      - rabbitmq
+      - captain-db
+      - socket-gateway
+
+  ride-service:
+    build: ./ride-service
+    container_name: ride-service
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./ride-service:/app
+      - ./common:/app/common   # <-- Required
+      - /app/node_modules
+    environment:
+      PORT: 3003
+      MONGO_URL: mongodb://ride-db:27017/ridedb
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      SOCKET_URL: http://socket-gateway:4000
+    depends_on:
+      - rabbitmq
+      - ride-db
+      - socket-gateway
+
+  # =============== SOCKET.IO GATEWAY ===============
+  socket-gateway:
+    build: ./socket-gateway
+    container_name: socket-gateway
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./socket-gateway:/app
+      - /app/node_modules
+    environment:
+      PORT: 4000
+    depends_on:
+      - rabbitmq
+
+  # =============== API GATEWAY ===============
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+    depends_on:
+      - rider-service
+      - captain-service
+      - ride-service
+
+volumes:
+  rider-data:
+  captain-data:
+  ride-data:
