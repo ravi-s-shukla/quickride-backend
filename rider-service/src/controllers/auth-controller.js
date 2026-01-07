@@ -1,40 +1,74 @@
 import authService from "#src/services/auth-service.js";
+import { asyncHandler } from "../../middleware/async-handler.js";
+import ApiError from "../../utils/ApiError.js";
+import ApiResponse from "../../utils/ApiResponse.js";
 
 class AuthController {
-    async signUp(req, res) {
-        try {
-            const rider =  await authService.createUser(req);
-            res.status(201).json({ status: 201, message: "Rider created successfully"});
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  signUp = asyncHandler(async (req, res) => {
+    const rider = await authService.createRider(req);
+    if (!rider) throw new ApiError(500, "Rider not created");
+    return res
+      .status(201)
+      .json(new ApiResponse(201, "Rider created successfully"));
+  });
 
-    async login(req, res) {
-        try {
-            const rider = await authService.login(req);    
-            res.cookie("token", rider.token, { httpOnly: true, secure: false, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 }); 
-            res.cookie("role", "rider", { httpOnly: true, secure: false, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
-            rider.token = undefined;                        
-            res.status(200).json({ status: 200, data: rider });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  login = asyncHandler(async (req, res) => {
+    const rider = await authService.login({
+      email: req.body.email,
+      password: req.body.password,
+    });
+    if (!rider) throw new ApiError(500, "Rider not logged in");
+    res.cookie("token", rider.token, {
+      httpOnly: true,                        
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,                               
+    });
+    res.cookie("role", "rider", {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    const riderDetails = {
+      name: rider.name,
+      email: rider.email,
+      phone: rider.phone,
+      id: rider._id,
+    };
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "Rider logged in successfully", riderDetails));
+  });
 
-    async logout(req, res) {
-        try {
-            //delete token from db
-            const { email } = req.body;
-            const deletedUser = await userModel.findOneAndDelete({ email });
-            if (!deletedUser) {
-                return res.status(404).json({ error: "Rider not found" });
-            }
-            res.status(200).json({ message: "Logged out successfully" });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  logout = asyncHandler(async (req, res) => {
+    res.cookie("token", "", {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    res.cookie("role", "", {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "Rider logged out successfully"));
+  });
+
+  details = asyncHandler(async (req, res) => {
+    console.log(req.user.id);
+    const rider = await authService.riderDetails(req.user.id);
+    return res.status(200)
+      .json(new ApiResponse(200, "Rider details fetched successfully", rider));
+  });
 }
 
 export default new AuthController();

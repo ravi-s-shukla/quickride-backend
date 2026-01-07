@@ -1,16 +1,47 @@
 version: '3.9'
 
 services:
-  # =============== MESSAGE BROKER ===============
+  # =============== MESSAGE BROKER (RabbitMQ) ===============
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"     # message broker port
-      - "15672:15672"   # management UI
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+
+  # =============== KAFKA STACK ===============
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # =============== REDIS ===============
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
 
   # =============== DATABASES ===============
   rider-db:
@@ -25,7 +56,7 @@ services:
     image: mongo:6
     container_name: captain-db
     ports:
-      - "27018:27017" # Expose on different host port to avoid conflict and right hand side is same because each container uses default port
+      - "27018:27017"
     volumes:
       - captain-data:/data/db
 
@@ -45,7 +76,7 @@ services:
       - "3001:3001"
     volumes:
       - ./rider-service:/app
-      - ./common:/app/common   # <-- Required
+      - ./common:/app/common
       - /app/node_modules
     environment:
       PORT: 3001
@@ -64,7 +95,7 @@ services:
       - "3002:3002"
     volumes:
       - ./captain-service:/app
-      - ./common:/app/common   # <-- Required
+      - ./common:/app/common
       - /app/node_modules
     environment:
       PORT: 3002
@@ -83,7 +114,7 @@ services:
       - "3003:3003"
     volumes:
       - ./ride-service:/app
-      - ./common:/app/common   # <-- Required
+      - ./common:/app/common
       - /app/node_modules
     environment:
       PORT: 3003
@@ -106,7 +137,12 @@ services:
       - /app/node_modules
     environment:
       PORT: 4000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKER: kafka:9092
     depends_on:
+      - redis
+      - kafka
       - rabbitmq
 
   # =============== API GATEWAY ===============

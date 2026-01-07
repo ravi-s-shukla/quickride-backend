@@ -1,13 +1,12 @@
-import express from "express";
+import http from "http";
+import app from "./app.js";
+import { initSocket } from "./socket/index.js";
+import { env } from "./config/env.js";
 
-const app = express();
+const server = http.createServer(app);
 
-app.use(express.json());
+initSocket(server);
 
-app.use("/", (req, res) => {
-    res.send("Socket Gateway");
-});
-
-app.listen(4000, () => {
-    console.log("Socket Gateway running on port 4000");
+server.listen(env.PORT, () => {
+  console.log(`🚀 Socket Gateway running on port ${env.PORT}`);
 });
