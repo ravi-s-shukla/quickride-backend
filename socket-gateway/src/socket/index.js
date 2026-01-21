@@ -8,7 +8,7 @@ export const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
       origin: allowedOrigin,
-      credentials: true
+      credentials: true,
     }
   });
 

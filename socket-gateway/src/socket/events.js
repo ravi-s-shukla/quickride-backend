@@ -1,6 +1,7 @@
 import {
     saveSocketId,
-    removeSocketId
+    removeSocketId,
+    getSocketId
   } from "../services/redis-service.js";
   
   export const registerSocketEvents = (io, socket) => {
@@ -8,7 +9,7 @@ import {
     
     // Save socketId in Redis
     saveSocketId(role, id, socket.id);
-  
+
     socket.on("disconnect", () => {
       console.log(`❌ ${role} disconnected → ${id}`);
       removeSocketId(role, id);

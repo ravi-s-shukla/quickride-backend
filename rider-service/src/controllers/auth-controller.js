@@ -64,7 +64,6 @@ class AuthController {
   });
 
   details = asyncHandler(async (req, res) => {
-    console.log(req.user.id);
     const rider = await authService.riderDetails(req.user.id);
     return res.status(200)
       .json(new ApiResponse(200, "Rider details fetched successfully", rider));
