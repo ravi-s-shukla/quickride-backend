@@ -13,11 +13,6 @@ connectDB();
 app.use(cookieParser());
 app.use('/', router);
 
-//run this route at last
-app.use((req, res) => {
-  res.send('Captain Service');
-});
-
 app.use(errorHandler);
 
 app.listen(3002, () => {
